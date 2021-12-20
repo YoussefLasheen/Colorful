@@ -1,5 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:colorful/utilities/camera.dart';
+import 'package:colorful/widgets/error_frame_widget.dart';
 import 'package:flutter/material.dart';
 
 class CameraWidget extends StatefulWidget {
@@ -12,45 +13,21 @@ class CameraWidget extends StatefulWidget {
 }
 
 class _CameraWidgetState extends State<CameraWidget> {
-  late CameraController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  Future<void> _initializeCameraController() async {
-    final CameraDescription camera;
-
-    if (widget.cameraIndex == -1) {
-      camera = await Camera.getFirstCamera();
-    } else {
-      camera = await Camera.getIndexCamera(widget.cameraIndex);
-    }
-
-    _controller = CameraController(
-      camera,
-      ResolutionPreset.max,
-    );
-
-    await _controller.initialize();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(
-      future: _initializeCameraController(),
+      future: Camera.initialize(widget.cameraIndex),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.done) {
-          return CameraPreview(_controller);
+        if (snapshot.hasData) {
+          return CameraPreview(snapshot.data as CameraController);
+        } else if (snapshot.hasError) {
+          return ErrorFrameWidget(
+            message: snapshot.error?.toString(),
+          );
         } else {
-          return const Center(child: CircularProgressIndicator.adaptive());
+          return const Center(
+            child: CircularProgressIndicator.adaptive(),
+          );
         }
       },
     );
