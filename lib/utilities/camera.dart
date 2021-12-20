@@ -49,6 +49,10 @@ class Camera {
     return getCameraController();
   }
 
+  static void dispose() {
+    _cameraController?.dispose();
+  }
+
   static Future<void> switchCamera() async {
     switch (_lensDirection) {
       case CameraLensDirection.front:
