@@ -7,6 +7,7 @@
 # Flutter Build
 .dart_tool/*
 pubspec.lock
+.packages
 
 # Files for the ART/Dalvik VM
 *.dex
