@@ -2,8 +2,12 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
 class Camera {
-  static CameraController? _cameraController;
   static const _resolutionPreset = ResolutionPreset.max;
+
+  static CameraController? _cameraController;
+  static CameraLensDirection? _lensDirection;
+  static final List<VoidCallback> _callbackOnChange =
+      List.empty(growable: true);
 
   static CameraController getCameraController() {
     if (_cameraController == null) {
@@ -12,41 +16,63 @@ class Camera {
     return _cameraController as CameraController;
   }
 
-  static Future<List<CameraDescription>> getAvailableCameras() async {
+  static Future<List<CameraDescription>> _getAvailableCameras() async {
     WidgetsFlutterBinding.ensureInitialized();
     return await availableCameras();
   }
 
-  static Future<CameraDescription> getFirstCamera() async {
-    return (await getAvailableCameras()).first;
-  }
-
-  static Future<int> getCameraCount() async {
-    return (await getAvailableCameras()).length;
-  }
-
-  static Future<CameraDescription> getIndexCamera(int i) async {
-    final cameras = await getAvailableCameras();
-    if (i > cameras.length || i < 0) {
-      return getFirstCamera();
+  static Future<CameraDescription> _getCameraByLensDirection(
+      CameraLensDirection direction) async {
+    final cameras = await _getAvailableCameras();
+    for (var camera in cameras) {
+      if (camera.lensDirection == direction) {
+        return camera;
+      }
     }
-    return (await getAvailableCameras())[i];
+    return cameras.first;
   }
 
-  static Future<CameraController> initialize([int cameraIndex = -1]) async {
-    await _initializeCameraController(cameraIndex);
+  static int addOnChangeCallback(VoidCallback callback) {
+    _callbackOnChange.add(callback);
+    return _callbackOnChange.length - 1;
+  }
+
+  static void removeOnChangeCallback(int i) {
+    _callbackOnChange.removeAt(i);
+  }
+
+  static Future<CameraController> initialize(
+      [CameraLensDirection? direction]) async {
+    direction ??= CameraLensDirection.front;
+    await _initializeCameraController(direction);
+    _executeCallback();
     return getCameraController();
   }
 
-  static Future<void> _initializeCameraController(int i) async {
-    final CameraDescription camera;
-
-    if (i <= 0) {
-      camera = await Camera.getFirstCamera();
-    } else {
-      camera = await Camera.getIndexCamera(i);
+  static Future<void> switchCamera() async {
+    switch (_lensDirection) {
+      case CameraLensDirection.front:
+        await initialize(CameraLensDirection.back);
+        break;
+      case CameraLensDirection.back:
+        await initialize(CameraLensDirection.front);
+        break;
+      default:
+        await initialize();
     }
+  }
 
+  static void _executeCallback() {
+    for (var element in _callbackOnChange) {
+      element();
+    }
+  }
+
+  static Future<void> _initializeCameraController(
+      CameraLensDirection direction) async {
+    final camera = await _getCameraByLensDirection(direction);
+
+    _lensDirection = camera.lensDirection;
     _cameraController = CameraController(
       camera,
       _resolutionPreset,
